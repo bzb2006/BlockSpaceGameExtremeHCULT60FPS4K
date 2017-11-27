@@ -2,57 +2,149 @@ import pygame, sys, time, random
 
 pygame.init()
 
-window_width  = 800
-window_height = 600
+window_width  = 1280
+window_height = 720
 
 black = (0,0,0)
 white = (255,255,255)
-red = (255,0,0)
+red = (200,0,0)
+green = (0,200,0)
+highlight_red = (255,0,0)
+highlight_green = (0,255,0)
 
 grass_width = 36
 
+pause = False
+
 gameDisplay = pygame.display.set_mode((window_width, window_height))
-pygame.display.set_caption('TEST')
+pygame.display.set_caption('CUBE RUNNER')
 clock = pygame.time.Clock()
 
+bg_intro = pygame.image.load('Assets\Cube_Wallpaper.jpg')
+bg_game = pygame.image.load('Assets\highway_BG_fix.png')
 grassImg = pygame.image.load('Assets\Grass.png')
 
-def things(thingx, thingy, thingw, thingh, color):
-    pygame.draw.rect(gameDisplay, color, [thingx, thingy, thingw, thingh])
+def objects_dodged(count):
+    font = pygame.font.SysFont(None, 40)
+    text = font.render("Dodged: "+str(count), True, black)
+    gameDisplay.blit(text,(0,0))
+
+def objects(objectx, objecty, objectw, objecth, color):
+    pygame.draw.rect(gameDisplay, color, [objectx, objecty, objectw, objecth])
 
 def text_objects(text, font):
     textSurface = font.render(text, True, black)
     return textSurface, textSurface.get_rect()
 
-def message_display(text):
-    largeText = pygame.font.Font('freesansbold.ttf',115)
-    TextSurf, TextRect = text_objects(text, largeText)
+def crash():
+    pygame.mixer.music.stop()
+    largeText = pygame.font.SysFont("comicsansms",115)
+    TextSurf, TextRect = text_objects("GAME OVER", largeText)
     TextRect.center = ((window_width/2),(window_height/2))
     gameDisplay.blit(TextSurf, TextRect)
 
-    pygame.display.update()
 
-    time.sleep(2)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
 
-    main()
 
-def crash():
-    message_display('You Died')
+        button("Retry?",375,450,125,75,green,highlight_green,main)
+        button("Quit",725,450,125,75,red,highlight_red,quit)
+
+        pygame.display.update()
+        clock.tick(15)
 
 def grass(x, y):
     gameDisplay.blit(grassImg, (x, y))
 
+def unpause():
+    global pause
+    pygame.mixer.music.unpause()
+    pause = False
+
+def paused():
+    pygame.mixer.music.pause()
+
+    largeText = pygame.font.SysFont("comicsansms",115)
+    TextSurf, TextRect = text_objects("Paused", largeText)
+    TextRect.center = ((window_width/2),(window_height/2))
+    gameDisplay.blit(TextSurf, TextRect)
+
+
+    while pause:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+
+        button("Continue",375,450,125,75,green,highlight_green,unpause)
+        button("Quit",725,450,125,75,red,highlight_red,quit)
+
+        pygame.display.update()
+        clock.tick(15)
+
+def button(msg,x,y,w,h,ic,ac,action=None):
+    mouse = pygame.mouse.get_pos()
+    click = pygame.mouse.get_pressed()
+    print(click)
+    if x+w > mouse[0] > x and y+h > mouse[1] > y:
+        pygame.draw.rect(gameDisplay, ac,(x,y,w,h))
+
+        if click[0] == 1 and action != None:
+            action()
+    else:
+        pygame.draw.rect(gameDisplay, ic,(x,y,w,h))
+
+    smallText = pygame.font.SysFont("comicsansms",20)
+    textSurf, textRect = text_objects(msg, smallText)
+    textRect.center = ( (x+(w/2)), (y+(h/2)) )
+    gameDisplay.blit(textSurf, textRect)
+
+def intro_game():
+    intro = True
+
+    while intro:
+        for event in pygame.event.get():
+            #print(event)
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+        gameDisplay.fill(white)
+        gameDisplay.blit(bg_intro, (0, 0))
+        largeText = pygame.font.SysFont("comicsansms",180)
+        TextSurf, TextRect = text_objects("Cube Runner", largeText)
+        TextRect.center = ((window_width/2),(window_height/2))
+        gameDisplay.blit(TextSurf, TextRect)
+
+        button("START!",450,450,150,75,green,highlight_green,main)
+        button("Quit",600,450,150,75,red,highlight_red,quit)
+
+        pygame.display.update()
+        clock.tick(15)
+
 def main():
+    global pause
+    pygame.mixer.music.load('Assets/BG_loop.mp3')
+    pygame.mixer.music.play(-1)
     x = (window_width * 0.45)
-    y = (window_height * 0.85)
+    y = (window_height * 0.93)
 
     x_change = 0
 
-    thing_startx = random.randrange(0, window_width)
-    thing_starty = -600
-    thing_speed = 7
-    thing_width = 100
-    thing_height = 100
+    object_startx = random.randrange(0, window_width)
+    object_starty = -600
+    object_speed = 7
+    object_width = 100
+    object_height = 100
+
+    objectCount = 1
+
+    dodged = 0
 
     gameExit = False
 
@@ -65,9 +157,12 @@ def main():
 
             if event.type == pygame. KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    x_change = -5
+                    x_change = -10
                 if event.key == pygame.K_RIGHT:
-                    x_change = 5
+                    x_change = 10
+                if event.key == pygame.K_p:
+                    pause = True
+                    paused()
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
@@ -75,33 +170,43 @@ def main():
 
         x += x_change
         gameDisplay.fill(white)
+        gameDisplay.blit(bg_game, (0, 0))
 
-        things(thing_startx, thing_starty, thing_width, thing_height, black)
-        thing_starty += thing_speed
+        objects(object_startx, object_starty, object_width, object_height, black)
+        object_starty += object_speed
         grass(x,y)
-
+        objects_dodged(dodged)
 
         if x > window_width - grass_width or x < 0:
             crash()
 
 
-        if thing_starty > window_height:
-            thing_starty = 0 - thing_height
-            thing_startx = random.randrange(0,window_width)
+        if object_starty > window_height:
+            object_starty = 0 - object_height
+            object_startx = random.randrange(0,window_width)
+            dodged += 1
+            object_speed += 1.3
+            object_width += (dodged * 1.2)
 
-        if y < thing_starty+thing_height:
+        if y < object_starty+object_height:
             print('y crossover')
 
-            if x > thing_startx and x < thing_startx + thing_width or x+grass_width > thing_startx and x + grass_width < thing_startx+thing_width:
+            if x > object_startx and x < object_startx + object_width or x+grass_width > object_startx and x + grass_width < object_startx+object_width:
                 print('x crossover')
                 crash()
 
         pygame.display.update()
         clock.tick(60)
 
+intro_game()
 main()
 pygame.quit()
 quit()
+
+
+
+
+
 
 
 
